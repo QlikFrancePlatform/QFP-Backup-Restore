@@ -1,0 +1,1097 @@
+///$tab Main
+SET ThousandSep=' ';
+SET DecimalSep='.';
+SET MoneyThousandSep=' ';
+SET MoneyDecimalSep=',';
+SET MoneyFormat='# ##0,00 €;-# ##0,00 €';
+SET TimeFormat='hh:mm:ss';
+SET DateFormat='DD/MM/YYYY';
+SET TimestampFormat='DD/MM/YYYY hh:mm:ss[.fff]';
+SET FirstWeekDay=0;
+SET BrokenWeeks=0;
+SET ReferenceDay=4;
+SET FirstMonthOfYear=1;
+SET CollationLocale='fr-FR';
+SET CreateSearchIndexOnReload=1;
+SET MonthNames='jan;fév;mar;avr;mai;jui;jui;aoû;sep;oct;nov;déc';
+SET DayNames='lun.;mar.;mer.;jeu.;ven.;sam.;d-im.';
+SET LongMonthNames='janvier;février;mars;avril;mai;juin;juillet;août;septembre;octobre;novembre;décembre';
+SET LongDayNames='lundi;mardi;mercredi;jeudi;vendredi;samedi;dimanche';
+SET NumericalAbbreviation='3:k;6:M;9:G;12:T;15:P;18:E;21:Z;24:Y;-3:m;-6:μ;-9:n;-12:p;-15:f;-18:a;-21:z;-24:y';
+
+///$tab Load QVD
+Catégories:
+LOAD
+    hdr__from_timestamp										As timestamp_categorie,
+    num_categorie											As "N° Catégorie",
+    categorie												As "Catégorie",
+    description_categorie									As "Description Catégorie"
+FROM [lib://Shared - Data:DataFiles/Data asset for QVD - Pilotage Comm/public.categories.qvd]
+(qvd);
+
+// Clients:
+// LOAD
+//     hdr__from_timestamp										As timestamp_clients,
+//     client													As Client,
+//     num_client												As "N° Client",
+//     num_pays_client											As "Num Pays Client",
+//     pays_client												As "Pays Client",
+//     pays_code												As "Pays Code",
+//     ville_client											As "Ville Client",
+//     contact_client											As "Contact Client",
+//     telephone_client										As "Téléphone Client"
+// FROM [lib://Shared - Data:DataFiles/Data asset for QVD - Pilotage Comm/public.clients.qvd]
+// (qvd);
+
+LIB CONNECT TO 'Ventes - Dev:Snowflake_sfseeurope-eu_demo91_2.snowflakecomputing.com';
+
+LOAD CLIENT													As Client, 
+	NUM_CLIENT												As "N° Client", 
+	NUM_PAYS_CLIENT											As "Num Pays Client", 
+	PAYS_CLIENT												As "Pays Client", 
+	PAYS_CODE												As "Pays Code", 
+	VILLE_CLIENT											As "Ville Client", 
+	CONTACT_CLIENT											As "Contact Client", 
+	TELEPHONE_CLIENT										As "Téléphone Client";
+
+[Clients]:
+SELECT "CLIENT",
+	"NUM_CLIENT",
+	"NUM_PAYS_CLIENT",
+	"PAYS_CLIENT",
+	"PAYS_CODE",
+	"VILLE_CLIENT",
+	"CONTACT_CLIENT",
+	"TELEPHONE_CLIENT"
+FROM "PILOTAGE_COMMERCIAL"."PUBLIC"."Clients";
+
+
+
+
+Commandes:
+LOAD
+    timestamp_commandes,
+    "Date",
+    Année,
+    "N° Client",
+    "N° Commercial",
+    Poids,
+    "N° Commande",
+    "N° Transporteur",
+    Mois,
+    Trimestre,
+    TNum,
+    "Clé Objectif",
+    "Année-Mois",
+    'Non' as "Nouvelle Commande"
+FROM [lib://France Team:DataFiles/PC_Commandes.qvd]
+(qvd);
+
+
+//Store Commandes into [lib://France Team:DataFiles/PC_Commandes.qvd] (qvd);
+
+// Concatenate
+
+// Load * Inline [
+// "Date",Année,"N° Client","N° Commercial",Poids,"N° Commande","N° Transporteur",Mois,Trimestre,TNum,"Clé Objectif","Année-Mois"
+// 30/07/2021,2021,19,3,40,11085,2,9,T3,3,2014-09@7,2021-07
+// ];
+
+//NoConcatenate
+
+Commerciaux:
+LOAD
+    hdr__from_timestamp										As timestamp_commerciaux,
+    num_commercial											As "N° Commercial",
+    commercial												As Commercial,
+    date_dembauche											As "Date d'Embauche",
+    num_bureau												As "N° Bureau",
+    num_manager												As "N° Manager",
+    titre													As Titre,
+    salaire_annuel											As "Salaire Annuel"
+FROM [lib://Shared - Data:DataFiles/Data asset for QVD - Pilotage Comm/public.commerciaux.qvd]
+(qvd);
+
+Détails_Commandes:
+LOAD
+    hdr__from_timestamp										As timestamp_details_commandes,
+    id,
+    num_commande											As "N° Commande",
+    num_produit												As "N° Produit",
+    quantité												As Quantité,
+    //montant								As Montant,
+    num(num#(montant, '#,##', ',', ''), '#.##')				As Montant,
+    //remise								As Remise,
+    num(num#(remise, '#,##', ',', ''), '#.##')				As Remise,
+    //coût_interne						As "Coût Interne",
+    num(num#(coût_interne, '#,##', ',', ''), '#.##')		As "Coût Interne",
+    // marge													As Marge
+    num(num#(marge, '#,##', ',', ''), '#.##')				As Marge
+FROM [lib://Shared - Data:DataFiles/Data asset for QVD - Pilotage Comm/public.details_commandes.qvd]
+(qvd);
+
+// Concatenate
+
+// Load * Inline [
+// "N° Commande","N° Produit",Quantité,Montant,Remise,"Coût Interne",Marge
+// 11085,76,2000,300000,244318,211596,187334
+// ];
+
+// NoConcatenate
+
+Objectifs:
+LOAD
+    hdr__from_timestamp									As timestamp_objectifs,
+    cle_objectif										As "Clé Objectif",
+    num(num#(objectif, '#,##', ',', ''), '#.##')		As Objectif
+FROM [lib://Shared - Data:DataFiles/Data asset for QVD - Pilotage Comm/public.objectifs.qvd]
+(qvd);
+
+Produits:
+LOAD
+    hdr__from_timestamp									As timestamp_produits,
+    num_produit											As "N° Produit",
+    num_categorie										As "N° Catégorie",
+    produit												As Produit,
+    num_fournisseur										As "N° Fournisseur"
+FROM [lib://Shared - Data:DataFiles/Data asset for QVD - Pilotage Comm/public.produits.qvd]
+(qvd);
+
+// Stocks:
+// LOAD
+// //    hdr__from_timestamp									As timestamp_stocks,
+//     nb_unites											As "Nb Unites",
+//     pays_stock											As "Pays Stock",
+//     num_produit											As "N° Produit"
+// FROM [lib://Shared - Data:DataFiles/Data asset for QVD - Stocks/public.stocks.qvd]
+// (qvd);
+
+STOCKS:
+LOAD
+    "Nb Unites",
+    "Pays Stock",
+    "N° Produit"
+FROM [lib://France Team:DataFiles/stocks.qvd]
+(qvd);
+
+
+
+// LIB CONNECT TO 'France Team:Snowflake_A';
+
+// SQL USE ROLE SYSADMIN;
+
+// LOAD [Nb Unites], 
+// 	[Pays Stock], 
+// 	[N° Produit];
+
+// [STOCKS]:
+// SELECT "Nb Unites",
+// 	"Pays Stock",
+// 	"N° Produit"
+// FROM "STOCKS"."PUBLIC"."STOCKS";
+
+
+
+// Store Catégories into [lib://France Team:Amazon_S3_1/Qlik-Data-Service/QVD_Pilotage_Commercial/Categories.qvd];
+// Store Clients into [lib://France Team:Amazon_S3_1/Qlik-Data-Service/QVD_Pilotage_Commercial/Clients.qvd];
+// Store Commandes into [lib://France Team:Amazon_S3_1/Qlik-Data-Service/QVD_Pilotage_Commercial/Commandes.qvd];
+// Store Détails_Commandes into [lib://France Team:Amazon_S3_1/Qlik-Data-Service/QVD_Pilotage_Commercial/Détails_Commandes.qvd];
+// Store Commerciaux into [lib://France Team:Amazon_S3_1/Qlik-Data-Service/QVD_Pilotage_Commercial/Commerciaux.qvd];
+// Store Objectifs into [lib://France Team:Amazon_S3_1/Qlik-Data-Service/QVD_Pilotage_Commercial/Objectifs.qvd];
+// Store Produits into [lib://France Team:Amazon_S3_1/Qlik-Data-Service/QVD_Pilotage_Commercial/Produits.qvd];
+// Store Stocks into [lib://France Team:Amazon_S3_1/Qlik-Data-Service/QVD_Pilotage_Commercial/Stocks.qvd];
+
+
+
+///$tab Commentaire
+LIB CONNECT TO 'France Team:PostgreSQL_Azure_Commentaire';
+
+LOAD id As id_comment, 
+	comment, 
+	date,
+    num_commercial 	As "N° Commercial";
+
+[comment]:
+SELECT "id",
+	"comment",
+	"date",
+    num_commercial
+FROM "public"."comment";
+
+
+///$tab Stock Italie
+Stocks:
+load * Inline [
+N° Produit,Pays Stock,Nb Unites
+1,Italy,1300
+2,Italy,4950
+3,Italy,2806
+4,Italy,4206
+5,Italy,3492
+6,Italy,4584
+7,Italy,3643
+8,Italy,3274
+9,Italy,92
+10,Italy,4224
+11,Italy,3832
+12,Italy,1311
+13,Italy,388
+14,Italy,4353
+15,Italy,317
+16,Italy,2146
+17,Italy,1716
+18,Italy,1179
+19,Italy,4990
+20,Italy,4594
+21,Italy,4476
+22,Italy,4030
+23,Italy,3632
+24,Italy,4097
+25,Italy,2170
+26,Italy,1378
+27,Italy,3543
+28,Italy,1294
+29,Italy,571
+30,Italy,3968
+31,Italy,2956
+32,Italy,2297
+33,Italy,1586
+34,Italy,1697
+35,Italy,1158
+36,Italy,4026
+37,Italy,679
+38,Italy,4057
+39,Italy,3937
+40,Italy,1574
+41,Italy,4810
+42,Italy,1019
+43,Italy,1697
+44,Italy,1913
+45,Italy,3558
+46,Italy,4165
+47,Italy,2072
+48,Italy,582
+49,Italy,2775
+50,Italy,4414
+51,Italy,4169
+52,Italy,2172
+53,Italy,3230
+54,Italy,535
+55,Italy,2345
+56,Italy,1810
+57,Italy,4558
+58,Italy,985
+59,Italy,631
+60,Italy,678
+61,Italy,67
+62,Italy,458
+63,Italy,634
+64,Italy,4923
+65,Italy,156
+66,Italy,4616
+67,Italy,2045
+68,Italy,201
+69,Italy,4566
+70,Italy,1014
+71,Italy,3322
+72,Italy,4735
+73,Italy,1719
+74,Italy,716
+75,Italy,2187
+76,Italy,1415
+76,Allemagne,300
+77,Italy,4692
+78,Italy,2746
+];
+///$tab Geo des Stocks
+[Geo]:
+load * Inline [
+Pays Stock,Entrepôt, Latitude, Longitude, order, responsable, idResponsable
+Allemagne, Berlin,52.5200, 13.4049,1, Tom Ripley, 00309000002ydlyAAA
+Belgique, Bruxelles, 50.8503, 4.3517,2, Edna Frank, 00309000002ydm0AAA
+UK, London,51.5073,-0.1277,3, Jake Llorrac, 00309000002ydm3AAA
+Italy, Turin, 45.0703, 7.6868,4, Arthur Song, 00309000002ydlwAAA
+France, Paris, 48.8566, 2.3522,5, Jane Grey, 00309000002ydlvAAA];
+
+
+[Geo_Stocks]:
+load [Pays Stock] ,Entrepôt, order, responsable, idResponsable,
+GeoMakePoint(Latitude, Longitude) as Point
+resident Geo;
+
+drop table Geo;
+
+
+Trajets:
+load * inline [
+Entrepôt,Arrivee
+Bruxelles, Paris
+Berlin, Paris
+London, Paris
+Paris, Paris
+Turin, Paris
+];
+
+
+mapping_table:
+mapping Load
+Entrepôt, Point resident Geo_Stocks;
+
+
+Table_Trajets:
+Load Entrepôt, applymap('mapping_table', Entrepôt) as Point_Depart, Arrivee, applymap('mapping_table',Arrivee) as Point_Arrivee
+resident Trajets;
+
+Drop table Trajets;
+
+
+MyRoutes:
+LOAD
+    Entrepôt,
+    Distance,
+    LowResLine,
+    durée,
+    transport
+FROM [lib://France Team:DataFiles/trajets.qvd]
+(qvd);
+
+
+// Load Entrepôt, Distance, LowResLine , interval( Duration/24/60/60, 'hh:mm') as  durée, 'Camion' as transport Extension
+// GeoOperations.ScriptEval('Routes(destField="Point_Arrivee", transportation="truck")', Table_Trajets);
+
+// Load Entrepôt, Distance, LowResLine , interval( Duration/24/60/60, 'hh:mm') as  durée, 'Camionette' as transport Extension
+// GeoOperations.ScriptEval('Routes(destField="Point_Arrivee", transportation="car")', Table_Trajets);
+
+// Store MyRoutes into [lib://France Team:DataFiles/trajets.qvd] (qvd);
+
+
+
+untag field [Entrepôt] 	with $geopoint;
+untag field [Point]		with $geopoint;
+
+untag Table [Geo_Stocks] With $geoname;
+
+///$tab Backorder Prediction (AutoML)
+// ----------------------------------------------------------------------------------------------
+// Use 2nd AutoML endpoint for prediction based on dataset to predict. Also give Key-Factors
+
+// Use REST API to drive Qlik AutoML request for prediction using the file previousmy refreshed on AWS S3
+/*
+LIB CONNECT TO 'France Team:REST_Qlik_AutoML_Backorder';
+
+// Call Prediction on the fly
+NoConcatenate
+RestConnectorMasterTable:
+SQL SELECT 
+	"Code_Produit",
+	"Stock_Produit",
+	"K_Stock_Produit_influence",
+	"Delai_Produit",
+	"K_Delai_Produit_influence",
+	"Prevision_Ventes_3M",
+	"K_Prevision_Ventes_3M_influence",
+	"Prevision_Ventes_6M",
+	"K_Prevision_Ventes_6M_influence",
+	"Prevision_Ventes_9M",
+	"K_Prevision_Ventes_9M_influence",
+	"Ventes_M",
+	"K_Ventes_M_influence",
+	"Ventes_3M",
+	"K_Ventes_3M_influence",
+	"Ventes_6M",
+	"K_Ventes_6M_influence",
+	"Retard_Approvisionnement_Produit",
+	"K_Retard_Approvisionnement_Produit_influence",
+	"Performance_Production_6M",
+	"K_Performance_Production_6M_influence",
+	"Rupture_Stock_Produit",
+	"Rupture_Stock_Produit_predicted",
+	"Rupture_Stock_Produit_predicted_0",
+	"Rupture_Stock_Produit_predicted_1"
+FROM CSV (header on, delimiter ",", quote """") "CSV_source";
+*/
+
+// Transcode code produit to fit backorder prediction with main products in current orders
+MAP_Transco_Produit:
+MAPPING LOAD * Inline [Code_Produit_In,Code_Produit_Out
+17,76
+27,75
+59,52
+58,1
+55,31
+62,21,
+7,30
+92,2
+94,5
+78,7
+96,9
+100,10
+101,11
+102,16
+227,17
+104,19
+111,20
+112,22
+119,24
+122,26
+79,27
+125,29
+126,32
+127,33
+134,34
+142,35
+149,37
+151,38
+153,39
+154,41
+158,43
+159,44
+165,45
+166,47
+171,48
+175,49
+176,50
+177,53
+178,54
+84,55
+229,58
+206,59
+179,60
+180,61
+219,62
+184,63
+185,64
+190,65
+192,66
+196,67
+198,68
+200,69
+202,70
+204,71
+209,72
+213,73
+216,74
+220,77
+];
+
+
+[Backorder_Prediction]:
+LOAD * WHERE Code_Produit < 78;
+LOAD
+    //Code_Produit AS "N° Produit", // Link to demo dataset
+    //Code_Produit, // Used for Product counts
+    ApplyMap('MAP_Transco_Produit',[Code_Produit]) AS "N° Produit", // Link to demo dataset
+    ApplyMap('MAP_Transco_Produit',[Code_Produit]) AS [Code_Produit], // Used for Product counts
+    
+    // Current variables given as input for prediction
+    Stock_Produit,
+    Delai_Produit,
+    [Prevision_Ventes_3M],
+	[Prevision_Ventes_6M],
+	[Prevision_Ventes_9M],
+	[Ventes_M],
+	[Ventes_3M],
+	[Ventes_6M],
+	Retard_Approvisionnement_Produit,
+	Performance_Production_6M,
+    
+    // Prediction results --> Influencer SHAP score (also called Key factors)
+	[K_Stock_Produit_influence],
+	[K_Delai_Produit_influence],
+	[K_Prevision_Ventes_3M_influence],
+	[K_Prevision_Ventes_6M_influence],
+	[K_Prevision_Ventes_9M_influence],
+	[K_Ventes_M_influence],
+	[K_Ventes_3M_influence],
+	[K_Ventes_6M_influence],
+	[K_Retard_Approvisionnement_Produit_influence],
+	[K_Performance_Production_6M_influence],
+    
+	[Rupture_Stock_Produit] AS [Produit_Backorder_Predict],
+    
+    // Prediction
+	Dual(if(Rupture_Stock_Produit_predicted=1,'Oui','Non'),[Rupture_Stock_Produit_predicted]) AS Produit_Backorder_Prediction, // Yes if backorder prediction)
+	[Rupture_Stock_Produit_predicted_0] AS Produit_Backorder_Prediction_Proba_Non,
+	[Rupture_Stock_Produit_predicted_1] AS Produit_Backorder_Prediction_Proba_Oui // Probability score that the product will be in backorder in the futur
+FROM [lib://France Team:DataFiles/backorder_predict_PREDICTED.csv]
+(txt, codepage is 28591, embedded labels, delimiter is ',', msq);
+
+
+// Generate a table with the Key influencer score for explainability (scatter plot target)
+NoConcatenate
+Backorder_Prediction_Denormalized:
+LOAD	
+	[Code_Produit] AS "N° Produit",
+	[K_Stock_Produit_influence] AS K_Stock,
+	[K_Delai_Produit_influence] AS [K_Délai Appro.],
+	[K_Prevision_Ventes_3M_influence] AS [K_Ventes prévisionnelle 3 mois],
+	[K_Prevision_Ventes_6M_influence] AS [K_Ventes prévisionnelle 6 mois],
+	[K_Prevision_Ventes_9M_influence] AS [K_Ventes prévisionnelle 9 mois],
+	[K_Ventes_M_influence] AS [K_Ventes mois dernier],
+	[K_Ventes_3M_influence] AS [K_Ventes 3 derniers mois],
+	[K_Ventes_6M_influence] AS [K_Ventes 6 derniers mois],
+	[K_Retard_Approvisionnement_Produit_influence] AS [K_Retard Appro.],
+	[K_Performance_Production_6M_influence] AS [K_Performance Fournisseur]
+RESIDENT Backorder_Prediction;
+
+
+// -------------------------------------------------------------------------------------
+// Generate a table with Normalized K_influenceur for dataviz purpose (Create a dimension for influencer)
+// Objective is to show in one Viz the Key influencer
+_Temp_backoder_Prediction_Influence_Normalized:
+CROSSTABLE ([K_Influenceur],[Influence Score],1)
+LOAD 
+	*
+RESIDENT Backorder_Prediction_Denormalized;
+DROP Table Backorder_Prediction_Denormalized;
+
+[Backorder_Prediction_Influence_Normalized]:
+NOCONCATENATE LOAD
+	"N° Produit",
+	[K_Influenceur],
+	[Influence Score],
+	Right([K_Influenceur],len([K_Influenceur])-2) AS [Influenceur],
+    AutoNumber([K_Influenceur],'Influenceur') AS [Influenceur_Id]
+RESIDENT [_Temp_backoder_Prediction_Influence_Normalized];
+DROP TABLE [_Temp_backoder_Prediction_Influence_Normalized];
+
+TAG FIELD [K_Influenceur] WITH '$hidden';
+
+
+///$tab Commandes
+Concatenate(Commandes)
+
+Load * Inline [
+"Pays Livraison","Ville Livraison",Date,"N° Client","N° Commercial","N° Commande","Clé Objectif",Année,Poids,"N° Transporteur",Mois,Trimestre,TNum,Année-Mois, "Nouvelle Commande"
+France,Paris,01/07/2021,84,5,12120,2021-07@CL84,2021,480,2,Juillet,T3,2,2021-07,Oui
+France,Paris,01/07/2021,23,6,12121,2021-07@CL23,2021,14,3,Juillet,T3,2,2021-07,Oui
+France,Paris,02/07/2021,23,6,12122,2021-07@CL23,2021,41,3,Juillet,T3,3,2021-07,Oui
+France,Paris,02/07/2021,18,6,12123,2021-07@CL18,2021,200,2,Juillet,T3,2,2021-07,Oui
+France,Paris,02/07/2021,84,5,12124,2021-07@CL84,2021,120,1,Juillet,T3,1,2021-07,Oui
+France,Paris,02/07/2021,41,5,12125,2021-07@CL41,2021,1.6,1,Juillet,T3,4,2021-07,Oui
+France,Paris,03/07/2021,7,5,12126,2021-07@CL7,2021,400,3,Juillet,T3,2,2021-07,Oui
+France,Paris,03/07/2021,84,5,12127,2021-07@CL84,2021,80,2,Juillet,T3,3,2021-07,Oui
+France,Paris,03/07/2021,41,5,12128,2021-07@CL41,2021,120,2,Juillet,T3,4,2021-07,Oui
+France,Paris,04/07/2021,23,6,12129,2021-07@CL23,2021,249.6,1,Juillet,T3,2,2021-07,Oui
+France,Paris,04/07/2021,84,5,12130,2021-07@CL84,2021,52,2,Juillet,T3,4,2021-07,Oui
+];
+
+Concatenate(Détails_Commandes)
+Load * Inline [
+"N° Commande","N° Produit",Quantité,Montant,Remise,"Coût Interne",Marge
+12120,76,200,523092.00,52309.00,401187.00,69596.00
+12121,76,135,15256.90,762.85,11701.30,2792.75
+12122,76,100,43591.00,2179.55,33432.20,7979.25
+12123,76,100,217955.00,10897.75,167161.10,39896.15
+12124,76,300,130773.00,6538.65,100296.60,23937.75
+12125,76,225,54488.75,2724.44,41790.26,9974.05
+12126,76,100,435910.00,21795.50,1337.29,412777.21
+12127,76,200,87182.00,4359.10,66864.42,15958.48
+12128,76,300,130773.00,6538.65,100296.60,23937.75
+12129,76,250,108977.50,5448.88,83580.53,19948.09
+12130,76,125,54488.75,2724.44,41790.26,9974.05
+12130,75,334,871.82,0.00,668.64,203.18
+12125,12,500,44.26,7.38,32.53,11.73
+12122,12,200,44.26,7.38,32.53,11.73
+];
+
+///$tab Exit
+exit Script;
+///$tab Backorder Prediction (AutoML) - Learn
+// -------------------------------------------------------------------------------------------
+// Dataset for prediction - 
+// N.B: sources are on Yoann QMI-S3 since 30 may 2022 for 90 days
+
+// Load Kaggle full dataset for prediction, keep only part of the fields to simplify dataset - do not change for consistance with training dataset
+NoConcatenate
+[Backorder_Predict]:
+LOAD
+    sku as Code_Produit,
+    national_inv as Stock_Produit,
+    lead_time as Delai_Produit,
+    forecast_3_month as Prevision_Ventes_3M,
+    forecast_6_month as Prevision_Ventes_6M,
+    forecast_9_month as Prevision_Ventes_9M,
+    sales_1_month as Ventes_M,
+    sales_3_month as Ventes_3M,
+    sales_6_month as Ventes_6M,
+    pieces_past_due as Retard_Approvisionnement_Produit,
+    perf_6_month_avg as Performance_Production_6M,
+    Null() AS Rupture_Stock_Produit
+FROM [lib://France Team:QMI_Yoann_S3/backorder/backorder_predict_source.csv]
+(txt, codepage is 28591, embedded labels, delimiter is ',', msq);
+
+
+// ----------------------------------------------------------------------------------------------
+// Store dataset to predict on AWS S3 - Dataset is available for prediction in Qlik AutoML service
+Store Backorder_Predict into [lib://France Team:QMI_Yoann_S3/backorder_predict.csv] (txt, delimiter is ',');
+drop table Backorder_Predict;
+///$tab ADD T4
+// Concatenate
+
+// Load * Inline [
+// "N° Commande","N° Produit",Quantité,Montant,Remise,"Coût Interne",Marge
+// 20815,54,132,21930,318,21596,334
+// 20814,5,68,48344,214,47990,354
+// 20824,26,281,46631,322,46272,359
+// 20823,63,43,23747,322,23350,397
+// 20829,73,41,43924,160,43573,351
+// 20828,52,139,48984,257,48636,348
+// 20832,26,177,28745,270,28350,395
+// 21020,76,109,45392,422,45071,321
+// 20835,27,132,49209,471,48849,360
+// 20837,32,130,29942,365,29544,398
+// 20417,60,50,23686,423,23300,386
+// 20387,76,178,40575,253,40193,382
+// 20841,25,251,36219,10,35840,379
+// 20843,40,153,22955,401,22632,323
+// 20420,56,42,38908,148,38581,327
+// 20360,60,238,47282,336,46975,307
+// 20846,4,133,37976,154,37583,393
+// 20849,57,100,33415,293,33021,394
+// 20850,15,296,26117,244,25729,388
+// 20852,32,51,26184,238,25830,354
+// 20853,38,280,43265,276,42867,398
+// 20854,14,60,20199,43,19877,322
+// 20856,57,146,20223,247,19882,341
+// 21056,76,239,41029,4,40629,400
+// 20267,76,17,44971,499,44614,357
+// 21078,75,180,21460,369,21079,381
+// 20860,76,50,34222,48,33864,358
+// 20858,55,111,37845,65,37542,303
+// 20804,49,282,20276,355,19922,354
+// 20862,75,182,39133,295,38806,327
+// 20874,12,77,33581,64,33245,336
+// 21002,19,167,34652,181,34257,395
+// 20879,62,194,33920,293,33528,392
+// 20880,73,294,24843,414,24528,315
+// 20892,26,61,46456,287,46073,383
+// 20893,8,212,37631,252,37313,318
+// 20898,15,225,44008,325,43687,321
+// 20900,3,244,25858,62,25511,347
+// 20902,47,233,30662,132,30362,300
+// 20904,76,214,47839,28,47514,325
+// 20907,76,240,23144,120,22832,312
+// 20363,20,181,44711,69,44368,343
+// 20913,38,247,39052,498,38653,399
+// 20915,60,244,36875,20,36483,392
+// 20426,52,289,29142,67,28768,374
+// 20367,19,172,29457,114,29082,375
+// 20428,76,70,23527,82,23159,368
+// 20859,38,144,34147,407,33834,313
+// 20917,50,86,44881,300,44572,309
+// 20919,37,50,42880,115,42569,311
+// 20868,45,80,44458,214,44144,314
+// 20924,36,13,33275,486,32918,357
+// 20925,50,166,44805,344,44433,372
+// 20928,19,27,39584,1,39206,378
+// 20933,65,152,39735,187,39359,376
+// 20931,29,136,24089,456,23755,334
+// 20936,57,197,23315,328,22931,384
+// 20939,33,295,23630,487,23294,336
+// 20943,31,172,27955,498,27654,301
+// 20944,21,235,44506,221,44159,347
+// 20948,14,170,36210,388,35875,335
+// 20953,3,59,26530,137,26216,314
+// 20951,76,12,43983,380,43680,303
+// 20888,76,254,42240,490,41923,317
+// 20952,9,20,40356,54,39989,367
+// 20955,4,12,36737,406,36373,364
+// 20959,31,293,49830,120,49516,314
+// 20896,41,105,25341,183,25013,328
+// 20963,63,194,27798,183,27457,341
+// 20961,52,291,25488,117,25164,324
+// 20966,30,217,21983,358,21583,400
+// 20972,66,178,20308,356,19989,319
+// 20970,76,28,41074,22,40726,348
+// 20973,50,107,23452,56,23133,319
+// 20974,55,18,26692,123,26343,349
+// 20976,24,228,21350,412,21024,326
+// 20977,51,198,23148,127,22784,364
+// 20982,23,250,24974,333,24645,329
+// 21082,63,210,27919,29,27606,313
+// 20805,76,20,21533,62,21163,370
+// 20986,31,237,23158,142,22812,346
+// 20988,76,41,43397,170,43070,327
+// 20490,54,165,29290,59,28944,346
+// 20989,18,88,25474,222,25094,380
+// 20990,69,11,35843,118,35517,326
+// 20993,70,183,29315,221,28940,375
+// 20991,52,224,24832,61,24521,311
+// 20996,24,172,40699,40,40301,398
+// 20995,24,237,29724,1,29324,400
+// 20998,76,40,48230,155,47864,366
+// 20866,36,218,38046,58,37711,335
+// 20386,71,125,20265,454,19950,315
+// ];
+
+// NoConcatenate
+///$tab ADD Stocks
+// Stocks:
+// load * Inline [
+// Nb Unites,Pays Stock,N° Produit
+// 17,Belgique,1
+// 34,Allemagne,21
+// 50,France,76
+// 64,France,47
+// 93,Allemagne,74
+// 112,France,13
+// 123,France,24
+// 141,Belgique,21
+// 171,Allemagne,23
+// 208,Belgique,47
+// 214,UK,6
+// 229,Allemagne,58
+// 308,UK,61
+// 336,UK,66
+// 337,Belgique,41
+// 379,Allemagne,55
+// 381,Allemagne,48
+// 385,UK,65
+// 403,Belgique,29
+// 407,Allemagne,10
+// 427,Belgique,32
+// 447,Belgique,74
+// 480,Belgique,12
+// 481,France,34
+// 483,Belgique,60
+// 490,France,3
+// 500,UK,30
+// 505,UK,53
+// 530,UK,3
+// 535,France,78
+// 539,UK,26
+// 550,Belgique,16
+// 553,Belgique,45
+// 553,France,25
+// 565,France,48
+// 567,Belgique,76
+// 606,Belgique,28
+// 608,UK,63
+// 612,Belgique,17
+// 633,UK,43
+// 638,Allemagne,3
+// 677,Allemagne,29
+// 684,Belgique,56
+// 692,UK,71
+// 693,Allemagne,15
+// 699,UK,15
+// 724,France,61
+// 724,UK,11
+// 725,Belgique,75
+// 747,France,31
+// 760,UK,27
+// 773,France,51
+// 779,UK,58
+// 799,UK,33
+// 856,Allemagne,16
+// 856,France,28
+// 871,Belgique,6
+// 911,France,64
+// 915,UK,16
+// 926,Belgique,11
+// 930,France,70
+// 937,Belgique,68
+// 963,UK,25
+// 1013,Belgique,30
+// 1030,France,5
+// 1038,UK,62
+// 1039,Allemagne,24
+// 1090,France,69
+// 1108,Allemagne,73
+// 1109,Belgique,70
+// 1111,Belgique,25
+// 1115,Allemagne,70
+// 1117,UK,74
+// 1140,France,11
+// 1154,Belgique,48
+// 1154,UK,48
+// 1189,Belgique,58
+// 1191,France,40
+// 1196,France,1
+// 1240,UK,76
+// 1241,Belgique,44
+// 1248,Allemagne,27
+// 1249,UK,73
+// 1264,Belgique,53
+// 1270,Allemagne,19
+// 1340,France,42
+// 1355,UK,55
+// 1382,Allemagne,63
+// 1389,UK,36
+// 1390,UK,46
+// 1434,Allemagne,32
+// 1435,France,45
+// 1439,Belgique,73
+// 1448,Belgique,31
+// 1475,France,49
+// 1488,France,35
+// 1497,Belgique,9
+// 1500,Allemagne,37
+// 1523,France,38
+// 1550,France,17
+// 1579,Allemagne,51
+// 1588,Allemagne,4
+// 1596,Belgique,14
+// 1613,Allemagne,42
+// 1619,France,30
+// 1624,UK,75
+// 1649,Belgique,3
+// 1684,UK,12
+// 1697,Allemagne,22
+// 1724,Allemagne,65
+// 1724,Belgique,43
+// 1724,UK,38
+// 1766,Allemagne,78
+// 1775,Allemagne,66
+// 1775,UK,39
+// 1811,Belgique,8
+// 1818,Allemagne,12
+// 1823,France,6
+// 1838,UK,19
+// 1846,France,53
+// 1859,France,62
+// 1867,Allemagne,61
+// 1869,France,7
+// 1877,Belgique,63
+// 1884,UK,47
+// 1888,Allemagne,50
+// 1935,UK,4
+// 1944,UK,54
+// 1944,UK,70
+// 1956,Allemagne,45
+// 1957,UK,20
+// 1985,Belgique,26
+// 2001,France,60
+// 2002,France,29
+// 2021,Allemagne,52
+// 2037,France,16
+// 2077,France,33
+// 2079,UK,77
+// 2103,France,23
+// 2108,Allemagne,72
+// 2113,Belgique,71
+// 2120,UK,2
+// 2121,UK,59
+// 2127,Belgique,18
+// 2130,Belgique,50
+// 2132,France,26
+// 2145,Allemagne,76
+// 2178,UK,21
+// 2195,UK,68
+// 2225,UK,51
+// 2284,France,54
+// 2285,UK,9
+// 2286,France,63
+// 2307,UK,22
+// 2309,Allemagne,40
+// 2314,UK,7
+// 2317,Belgique,15
+// 2332,Allemagne,38
+// 2351,Allemagne,34
+// 2369,Allemagne,8
+// 2385,Allemagne,71
+// 2396,Allemagne,68
+// 2406,Belgique,77
+// 2414,UK,28
+// 2415,Allemagne,25
+// 2434,UK,49
+// 2468,UK,45
+// 2477,France,66
+// 2485,Allemagne,59
+// 2522,France,20
+// 2533,UK,31
+// 2563,Belgique,20
+// 2578,Allemagne,67
+// 2587,Belgique,24
+// 2592,France,22
+// 2612,France,37
+// 2613,France,27
+// 2622,Allemagne,57
+// 2635,Belgique,65
+// 2637,France,2
+// 2639,Belgique,23
+// 2725,UK,5
+// 2745,UK,64
+// 2765,France,36
+// 2767,Allemagne,14
+// 2792,France,77
+// 2799,France,58
+// 2807,Belgique,61
+// 2854,Belgique,59
+// 2863,France,10
+// 2870,UK,42
+// 2894,Allemagne,62
+// 2908,France,57
+// 2916,France,32
+// 2916,UK,34
+// 2986,Belgique,66
+// 2996,France,55
+// 3009,France,65
+// 3049,UK,29
+// 3080,UK,32
+// 3118,Allemagne,28
+// 3125,Belgique,55
+// 3142,Belgique,67
+// 3147,France,74
+// 3161,France,43
+// 3172,France,9
+// 3185,Belgique,69
+// 3190,Belgique,10
+// 3204,France,67
+// 3240,Allemagne,6
+// 3273,Belgique,40
+// 3296,Allemagne,30
+// 3299,UK,14
+// 3304,Allemagne,9
+// 3325,Allemagne,26
+// 3335,UK,41
+// 3350,Belgique,7
+// 3354,Belgique,38
+// 3377,Allemagne,64
+// 3390,Belgique,22
+// 3392,France,72
+// 3401,UK,10
+// 3426,France,56
+// 3507,Allemagne,77
+// 3508,Belgique,62
+// 3518,UK,72
+// 3520,UK,40
+// 3535,Allemagne,5
+// 3544,Belgique,19
+// 3547,Allemagne,18
+// 3558,Allemagne,17
+// 3580,UK,24
+// 3586,Allemagne,11
+// 3593,Allemagne,46
+// 3600,Belgique,34
+// 3605,France,12
+// 3612,Belgique,52
+// 3640,UK,78
+// 3689,Belgique,54
+// 3693,Belgique,2
+// 3714,UK,17
+// 3719,France,41
+// 3731,UK,37
+// 3745,Allemagne,49
+// 3762,Allemagne,75
+// 3768,Allemagne,20
+// 3775,Allemagne,60
+// 3777,France,4
+// 3777,France,8
+// 3825,France,14
+// 3863,France,75
+// 3875,UK,1
+// 3882,Belgique,39
+// 3884,UK,8
+// 3911,UK,52
+// 3964,UK,13
+// 3971,France,21
+// 3997,Allemagne,33
+// 4016,Belgique,4
+// 4077,UK,69
+// 4080,Allemagne,2
+// 4094,Belgique,78
+// 4094,France,19
+// 4102,Belgique,36
+// 4113,UK,67
+// 4125,Allemagne,47
+// 4128,Allemagne,7
+// 4150,Belgique,72
+// 4151,UK,18
+// 4163,France,44
+// 4190,Belgique,5
+// 4192,UK,57
+// 4200,Belgique,49
+// 4218,Allemagne,54
+// 4229,Belgique,35
+// 4232,Belgique,27
+// 4249,UK,60
+// 4257,Belgique,13
+// 4258,Belgique,46
+// 4261,Allemagne,39
+// 4287,Allemagne,31
+// 4328,France,71
+// 4330,Belgique,42
+// 4512,UK,56
+// 4543,Allemagne,13
+// 4563,France,15
+// 4592,France,73
+// 4603,Allemagne,41
+// 4607,Belgique,33
+// 4644,Allemagne,36
+// 4658,France,68
+// 4689,UK,35
+// 4695,Allemagne,69
+// 4735,Allemagne,35
+// 4753,UK,44
+// 4762,UK,50
+// 4776,Belgique,64
+// 4782,France,46
+// 4783,Allemagne,1
+// 4786,France,52
+// 4797,France,39
+// 4803,Belgique,51
+// 4810,France,18
+// 4846,Allemagne,43
+// 4849,Belgique,57
+// 4860,UK,23
+// 4902,France,59
+// 4925,Allemagne,56
+// 4969,Allemagne,53
+// 4974,Allemagne,44
+// 4979,France,50
+// 4991,Belgique,37
+// ];
+
+
+///$tab QCS.Common.Script.Section.AutoGenerated
+///$autogenerated
+Set dataManagerTables = '','mutations';
+//This block renames script tables from non generated section which conflict with the names of managed tables
+
+For each name in $(dataManagerTables) 
+    Let index = 0;
+    Let currentName = name; 
+    Let tableNumber = TableNumber(name); 
+    Let matches = 0; 
+    Do while not IsNull(tableNumber) or (index > 0 and matches > 0)
+        index = index + 1; 
+        currentName = name & '-' & index; 
+        tableNumber = TableNumber(currentName) 
+        matches = Match('$(currentName)', $(dataManagerTables));
+    Loop 
+    If index > 0 then 
+            Rename Table '$(name)' to '$(currentName)'; 
+    EndIf; 
+Next; 
+Set dataManagerTables = ;
+
+
+Unqualify *;
+
+[mutations]:
+LOAD
+	[mutation],
+	[date_mutation],
+	[valeur_fonciere],
+	[adresse],
+	[code_postal],
+	[code_commune],
+	[Commune],
+	[code_departement],
+	[nombre_lots],
+	[type_local],
+	[surface],
+	[nombre_pieces_principales],
+	[surface_terrain],
+	[point_gps],
+	[nom_region],
+	[annee],
+	[Tranche_Surface]
+ FROM [lib://Big Data Paris:DataFiles/mutations.QVD]
+(qvd);
+
+
+
+
